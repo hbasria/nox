@@ -135,7 +135,7 @@ Default retention **1 day**, user-configurable via `hook.retention`
 ### Phase 0 — Skeleton
 - [x] Go project setup (`nox`), TOML parsing, single-file config loading
 - [x] OpenAI-compatible client (chat completions, provider agnostic)
-- [ ] `nox ask "..."` — plain context-free Q&A (no dedicated command yet; the default catch-all always frames things as command generation)
+- [x] `nox ask "..."` — plain Q&A, with piped input used as context when present
 
 ### Phase 1 — Core features
 - [x] `nox commit` — `git diff --staged` → generate message → commit on Enter
@@ -156,7 +156,7 @@ Default retention **1 day**, user-configurable via `hook.retention`
 - [ ] Project context file support (`NOX.md` — similar to ovh/shai's `SHAI.md`)
 
 ### Phase 4 — Polish / trust
-- [ ] `nox explain <command>`
+- [x] `nox explain <command>`
 - [ ] Learning commit style from git log (Conventional Commits vs. free-form) — currently only ad-hoc via a memory.md note if the user says so once
 - [ ] Model routing/escalation (simple task → small model, complex → large model)
 - [x] `--verbose` transparency mode (prints the raw request/response; no dedicated token/timing summary yet)

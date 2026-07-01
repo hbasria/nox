@@ -69,6 +69,20 @@ Skip this entirely when there's nothing new and durable to note; most requests w
 	return p + "\nWhat nox remembers about this machine:\n" + memoryCtx
 }
 
+// Ask returns the prompt for plain, context-free (or piped-context) Q&A —
+// as opposed to CommandGen, this is not about producing a runnable command.
+func Ask() string {
+	return system + `
+Task: answer the user's question directly and concisely. This is plain conversation, not a request to generate a shell command — don't output a bare command unless the user is literally asking what command to run, in which case include it inline as part of a normal answer.`
+}
+
+// Explain returns the prompt for explaining a shell command to the user
+// without running it.
+func Explain() string {
+	return system + `
+Task: explain the given shell command without running it. Break it down piece by piece (flags, pipes, redirections, substitutions) in plain language. If any part is destructive or risky, call that out explicitly.`
+}
+
 // CommitMsg appends instructions for generating a commit message from a
 // staged git diff.
 func CommitMsg() string {

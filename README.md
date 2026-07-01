@@ -142,6 +142,24 @@ $ brew install iproute2mac
 [Enter] run  [Ctrl+C] cancel
 ```
 
+### Plain Q&A with `nox ask`
+
+Never generates or runs a command — just answers, optionally using piped
+input as context:
+
+```
+$ ./nox ask "what does exit code 137 usually mean"
+$ echo "top RAM user: Zen Browser, 4GB" | ./nox ask "why might this be using so much RAM"
+```
+
+### Explaining a command with `nox explain`
+
+Breaks a command down in plain language without running it:
+
+```
+$ ./nox explain "find . -name '*.log' -mtime +30 -delete"
+```
+
 ### Chaining nox calls with pipes
 
 Piped input isn't run — it's handed to the model as context, and also
@@ -167,3 +185,4 @@ $ ./nox commit --verbose
 |---|---|
 | `--auto` | Skip the run/commit confirmation (dangerous commands still require typing "yes" on an interactive terminal) |
 | `--verbose` | Print the raw LLM request/response to stderr |
+| `--format` | Shape command output into readable columns (set `default.format = true` in config to make this the default) |
