@@ -16,7 +16,7 @@ import (
 // and runs it once confirmed. Before running, it checks that the command's
 // binaries actually exist on this machine and, if not, offers to install
 // them first.
-func RunNL(cfg *config.Config, request string, auto, verbose bool) error {
+func RunNL(cfg *config.Config, request string, auto, verbose, format bool) error {
 	if strings.TrimSpace(request) == "" {
 		return fmt.Errorf("empty request")
 	}
@@ -40,18 +40,22 @@ func RunNL(cfg *config.Config, request string, auto, verbose bool) error {
 		userPrompt = fmt.Sprintf("Piped input (from a previous command):\n%s\n\nRequest: %s", pipedInput, request)
 	}
 
-	raw, err := client.Complete(ctx, prompts.CommandGen(memCtx), userPrompt)
+	formatted := format || cfg.Default.Format
+	raw, err := client.Complete(ctx, prompts.CommandGen(memCtx, formatted), userPrompt)
 	if err != nil {
 		return err
 	}
 
 	cmdStr, notes := extractMemoryNotes(raw)
 	for _, note := range notes {
-		if err := memory.Append(note); err != nil {
+		written, err := memory.Append(note)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "nox: could not save memory note: %v\n", err)
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "nox: remembered: %s\n", note)
+		if written {
+			fmt.Fprintf(os.Stderr, "nox: remembered: %s\n", note)
+		}
 	}
 
 	cmdStr = stripCodeFence(cmdStr)

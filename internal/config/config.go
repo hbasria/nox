@@ -18,6 +18,7 @@ provider = "openai"
 model = "gpt-4o-mini"
 temperature = 0.2
 max_tokens = 400
+format = false   # true = always format command output into readable columns (same as passing --format)
 
 [providers.openai]
 base_url = "https://api.openai.com/v1"
@@ -37,6 +38,9 @@ type Default struct {
 	Model       string  `toml:"model"`
 	Temperature float64 `toml:"temperature"`
 	MaxTokens   int     `toml:"max_tokens"`
+	// Format, when true, makes nox always format command output into
+	// readable columns, as if --format were passed on every call.
+	Format bool `toml:"format"`
 }
 
 type Provider struct {

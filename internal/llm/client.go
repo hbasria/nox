@@ -25,6 +25,10 @@ type request struct {
 	Messages    []message `json:"messages"`
 	Temperature float64   `json:"temperature"`
 	MaxTokens   int       `json:"max_tokens"`
+	// Think disables reasoning/"thinking" output on models that support the
+	// toggle (e.g. served via Ollama). Providers that don't recognize this
+	// field simply ignore it.
+	Think bool `json:"think"`
 }
 
 type response struct {
@@ -76,6 +80,7 @@ func (c *Client) Complete(ctx context.Context, systemPrompt, userPrompt string) 
 		},
 		Temperature: c.temperature,
 		MaxTokens:   c.maxTokens,
+		Think:       false,
 	}
 
 	buf, err := json.Marshal(reqBody)

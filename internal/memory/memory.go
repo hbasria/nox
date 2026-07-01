@@ -52,28 +52,37 @@ func Load() (string, error) {
 }
 
 // Append adds a new fact/note as a bullet line, creating the file with its
-// usual starter content first if it doesn't exist yet.
-func Append(note string) error {
+// usual starter content first if it doesn't exist yet. It reports whether
+// the note was actually written (false if an identical note is already
+// present, in which case it's silently skipped).
+func Append(note string) (bool, error) {
+	note = strings.TrimSpace(note)
+
+	existing, err := Load()
+	if err != nil {
+		return false, err
+	}
+	for line := range strings.SplitSeq(existing, "\n") {
+		if strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "-")) == note {
+			return false, nil
+		}
+	}
+
 	path, err := Path()
 	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if _, err := Load(); err != nil {
-			return err
-		}
+		return false, err
 	}
 
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		return fmt.Errorf("could not open memory file: %w", err)
+		return false, fmt.Errorf("could not open memory file: %w", err)
 	}
 	defer f.Close()
 
-	if _, err := f.WriteString("- " + strings.TrimSpace(note) + "\n"); err != nil {
-		return fmt.Errorf("could not write to memory file: %w", err)
+	if _, err := f.WriteString("- " + note + "\n"); err != nil {
+		return false, fmt.Errorf("could not write to memory file: %w", err)
 	}
-	return nil
+	return true, nil
 }
 
 // detect builds the starter memory content from the current system.

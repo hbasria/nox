@@ -20,7 +20,8 @@ Usage:
 
 Flags:
   --auto                           skip confirmation (except dangerous commands)
-  --verbose                        print the raw request/response sent to the model`)
+  --verbose                        print the raw request/response sent to the model
+  --format                         shape command output into readable columns (set default.format = true in config to make this the default)`)
 }
 
 func main() {
@@ -32,6 +33,7 @@ func main() {
 
 	auto := false
 	verbose := false
+	format := false
 	rest := args[:0:0]
 	for _, a := range args {
 		switch a {
@@ -39,6 +41,8 @@ func main() {
 			auto = true
 		case "--verbose":
 			verbose = true
+		case "--format":
+			format = true
 		default:
 			rest = append(rest, a)
 		}
@@ -61,7 +65,7 @@ func main() {
 		usage()
 		return
 	default:
-		err = commands.RunNL(cfg, strings.Join(rest, " "), auto, verbose)
+		err = commands.RunNL(cfg, strings.Join(rest, " "), auto, verbose, format)
 	}
 
 	if err != nil {

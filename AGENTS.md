@@ -133,19 +133,19 @@ Default retention **1 day**, user-configurable via `hook.retention`
 ## 6. TODO — Simple to Complex
 
 ### Phase 0 — Skeleton
-- [ ] Go project setup (`nox`), TOML parsing, single-file config loading
-- [ ] OpenAI-compatible client (chat completions, provider agnostic)
-- [ ] `nox ask "..."` — plain context-free Q&A
+- [x] Go project setup (`nox`), TOML parsing, single-file config loading
+- [x] OpenAI-compatible client (chat completions, provider agnostic)
+- [ ] `nox ask "..."` — plain context-free Q&A (no dedicated command yet; the default catch-all always frames things as command generation)
 
 ### Phase 1 — Core features
-- [ ] `nox commit` — `git diff --staged` → generate message → commit on Enter
-- [ ] `--auto` global flag
-- [ ] Pipe support (auto context when stdin is present)
+- [x] `nox commit` — `git diff --staged` → generate message → commit on Enter
+- [x] `--auto` global flag
+- [x] Pipe support (piped stdin becomes LLM context and is forwarded to the generated command's own stdin)
 
 ### Phase 2 — Natural language → command execution
-- [ ] `nox "natural language command"` (general purpose find/ps/lsof-style)
-- [ ] Dangerous command guard (rm -rf, dd, force-push)
-- [ ] Multi-step plan confirmation (multiple commands → list → confirm one-by-one/all)
+- [x] `nox "natural language command"` (general purpose find/ps/lsof-style)
+- [x] Dangerous command guard (rm -rf, dd, force-push) — also blocks entirely when stdin isn't an interactive terminal
+- [ ] Multi-step plan confirmation (multiple commands → list → confirm one-by-one/all) — today it's always a single (possibly `&&`-chained) command, not a reviewable multi-step plan
 
 ### Phase 3 — Context enrichment
 - [ ] `nox init-shell` / `nox on` / `nox off` — hook install and toggle
@@ -157,11 +157,11 @@ Default retention **1 day**, user-configurable via `hook.retention`
 
 ### Phase 4 — Polish / trust
 - [ ] `nox explain <command>`
-- [ ] Learning commit style from git log (Conventional Commits vs. free-form)
+- [ ] Learning commit style from git log (Conventional Commits vs. free-form) — currently only ad-hoc via a memory.md note if the user says so once
 - [ ] Model routing/escalation (simple task → small model, complex → large model)
-- [ ] `--verbose` transparency mode (model, token, timing info)
+- [x] `--verbose` transparency mode (prints the raw request/response; no dedicated token/timing summary yet)
 - [ ] Offline fallback (fall back to Ollama if no key/internet)
-- [ ] Zero-config first experience (free/rate-limited default provider)
+- [ ] Zero-config first experience (free/rate-limited default provider) — config auto-creates on first run, but still needs a real API key
 
 ### Phase 5 — Advanced
 - [ ] Audit log + `nox undo`

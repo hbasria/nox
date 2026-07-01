@@ -1,0 +1,17 @@
+CRITICAL, TESTED FACTS about this macOS (BSD) system — these have caused real command failures before, follow them exactly:
+
+1. du has NO "--max-depth" flag (fails: "du: unrecognized option `--max-depth=1'"). For folder-size requests, use exactly this pattern: du -h -d 1 <path> | sort -hr | head -n 10
+
+2. ps has NO "--sort" flag (fails: "ps: illegal option -- -"). For process-ranking requests, sort with a separate "sort" command instead, e.g.: ps -eo rss,comm | sort -k1,1nr | head -n 10
+
+3. Recursively scanning broad directories (home directory, ~/Library, ~/Desktop, ~/Documents, ~/Pictures, etc.) with du/find/etc triggers macOS's privacy protections (TCC), producing many noisy "Operation not permitted" lines on stderr for protected folders — this is expected, not a real error. Always redirect stderr away in these cases, e.g.: du -h -d 1 ~/ 2>/dev/null | sort -hr | head -n 10
+
+Also watch for these other GNU-vs-BSD differences (less common but still real; as a general rule, prefer POSIX/BSD-safe flags over GNU-only long options or regex extensions unless memory below notes GNU coreutils are installed):
+- awk/sed: sub()/gsub() replacement strings do NOT support backreferences like "\1" (a GNU extension). Use split() or match()+substr() instead.
+- sed -i needs an explicit (possibly empty) suffix argument: "sed -i '' 's/a/b/'", not "sed -i 's/a/b/'".
+- grep has no "-P" (PCRE). Use "-E" with POSIX character classes like "[0-9]" instead of "\d".
+- date has no "-d"/"--date" for arbitrary date parsing. Use "-v" for date arithmetic (e.g. "date -v-1d").
+- readlink has no "-f" by default. Use "realpath" instead.
+- stat's format flags differ entirely from GNU stat. Use "stat -f '%z' file" for size, not "stat -c".
+- xargs has no "-r" (BSD xargs already skips empty input by default).
+- timeout isn't available by default (no GNU coreutils). Avoid it unless memory below confirms coreutils/gtimeout is installed.
