@@ -21,6 +21,8 @@ func RunNL(cfg *config.Config, request string, auto, verbose bool) error {
 		return fmt.Errorf("empty request")
 	}
 
+	pipedInput, piped := readPipedInput()
+
 	memCtx, err := memory.Load()
 	if err != nil {
 		return err
@@ -33,7 +35,12 @@ func RunNL(cfg *config.Config, request string, auto, verbose bool) error {
 
 	ctx := context.Background()
 
-	raw, err := client.Complete(ctx, prompts.CommandGen(memCtx), request)
+	userPrompt := request
+	if piped && strings.TrimSpace(pipedInput) != "" {
+		userPrompt = fmt.Sprintf("Piped input (from a previous command):\n%s\n\nRequest: %s", pipedInput, request)
+	}
+
+	raw, err := client.Complete(ctx, prompts.CommandGen(memCtx), userPrompt)
 	if err != nil {
 		return err
 	}
@@ -63,7 +70,10 @@ func RunNL(cfg *config.Config, request string, auto, verbose bool) error {
 		}
 	}
 
-	return confirmAndRun(cmdStr, auto)
+	if piped {
+		return confirmAndRun(cmdStr, auto, strings.NewReader(pipedInput))
+	}
+	return confirmAndRun(cmdStr, auto, nil)
 }
 
 // offerInstall asks the model for a shell command that installs bin, shows
@@ -80,7 +90,7 @@ func offerInstall(ctx context.Context, client *llm.Client, memCtx, bin string, a
 	}
 
 	fmt.Printf("%q was not found on this system. Suggested install:\n", bin)
-	if err := confirmAndRun(installCmd, auto); err != nil {
+	if err := confirmAndRun(installCmd, auto, nil); err != nil {
 		return false, err
 	}
 	return binaryExists(bin), nil
