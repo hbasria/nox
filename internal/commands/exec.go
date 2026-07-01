@@ -18,14 +18,14 @@ func confirmAndRun(cmdStr string, auto bool) error {
 	reader := bufio.NewReader(os.Stdin)
 
 	if isDangerous(cmdStr) {
-		fmt.Print(`Bu tehlikeli bir komut olabilir. Devam etmek için "yes" yaz: `)
+		fmt.Print(`This may be a dangerous command. Type "yes" to continue: `)
 		line, _ := reader.ReadString('\n')
 		if strings.TrimSpace(line) != "yes" {
-			fmt.Println("iptal edildi.")
+			fmt.Println("cancelled.")
 			return nil
 		}
 	} else if !auto {
-		fmt.Print("[Enter] çalıştır  [Ctrl+C] iptal ")
+		fmt.Print("[Enter] run  [Ctrl+C] cancel ")
 		if _, err := reader.ReadString('\n'); err != nil {
 			return nil
 		}

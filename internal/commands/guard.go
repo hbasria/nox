@@ -3,7 +3,7 @@ package commands
 import "regexp"
 
 // dangerPatterns catches command shapes that deserve an extra confirmation
-// step even when --auto is set, per nox's "onay varsayılan" philosophy.
+// step even when --auto is set, per nox's "confirm by default" philosophy.
 var dangerPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\brm\s+.*-[a-zA-Z]*r[a-zA-Z]*f\b`),
 	regexp.MustCompile(`\brm\s+.*-[a-zA-Z]*f[a-zA-Z]*r\b`),

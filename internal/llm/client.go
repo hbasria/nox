@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -28,7 +29,8 @@ type request struct {
 
 type response struct {
 	Choices []struct {
-		Message message `json:"message"`
+		Message      message `json:"message"`
+		FinishReason string  `json:"finish_reason"`
 	} `json:"choices"`
 	Error *struct {
 		Message string `json:"message"`
@@ -42,21 +44,24 @@ type Client struct {
 	model       string
 	temperature float64
 	maxTokens   int
+	verbose     bool
 	httpClient  *http.Client
 }
 
-// New builds a Client from the resolved config.
-func New(cfg *config.Config) (*Client, error) {
+// New builds a Client from the resolved config. When verbose is true,
+// Complete logs the outgoing request and raw response to stderr.
+func New(cfg *config.Config, verbose bool) (*Client, error) {
 	p, err := cfg.ActiveProvider()
 	if err != nil {
 		return nil, err
 	}
 	return &Client{
 		baseURL:     strings.TrimRight(p.BaseURL, "/"),
-		apiKey:      p.APIKey(),
+		apiKey:      p.ResolveAPIKey(),
 		model:       cfg.Default.Model,
 		temperature: cfg.Default.Temperature,
 		maxTokens:   cfg.Default.MaxTokens,
+		verbose:     verbose,
 		httpClient:  &http.Client{Timeout: 60 * time.Second},
 	}, nil
 }
@@ -75,13 +80,17 @@ func (c *Client) Complete(ctx context.Context, systemPrompt, userPrompt string) 
 
 	buf, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", fmt.Errorf("istek hazırlanamadı: %w", err)
+		return "", fmt.Errorf("could not build request: %w", err)
 	}
 
 	url := c.baseURL + "/chat/completions"
+	if c.verbose {
+		fmt.Fprintf(os.Stderr, "nox: --> POST %s\n%s\n", url, buf)
+	}
+
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(buf))
 	if err != nil {
-		return "", fmt.Errorf("istek oluşturulamadı: %w", err)
+		return "", fmt.Errorf("could not create request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	if c.apiKey != "" {
@@ -90,29 +99,40 @@ func (c *Client) Complete(ctx context.Context, systemPrompt, userPrompt string) 
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return "", fmt.Errorf("%s adresine bağlanılamadı: %w", c.baseURL, err)
+		return "", fmt.Errorf("could not connect to %s: %w", c.baseURL, err)
 	}
 	defer resp.Body.Close()
 
 	respBuf, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("yanıt okunamadı: %w", err)
+		return "", fmt.Errorf("could not read response: %w", err)
+	}
+
+	if c.verbose {
+		fmt.Fprintf(os.Stderr, "nox: <-- HTTP %d\n%s\n", resp.StatusCode, respBuf)
 	}
 
 	var parsed response
 	if err := json.Unmarshal(respBuf, &parsed); err != nil {
-		return "", fmt.Errorf("yanıt parse edilemedi (HTTP %d): %s", resp.StatusCode, string(respBuf))
+		return "", fmt.Errorf("could not parse response (HTTP %d): %s", resp.StatusCode, string(respBuf))
 	}
 
 	if parsed.Error != nil {
-		return "", fmt.Errorf("provider hatası (HTTP %d): %s", resp.StatusCode, parsed.Error.Message)
+		return "", fmt.Errorf("provider error (HTTP %d): %s", resp.StatusCode, parsed.Error.Message)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("provider HTTP %d döndürdü: %s", resp.StatusCode, string(respBuf))
+		return "", fmt.Errorf("provider returned HTTP %d: %s", resp.StatusCode, string(respBuf))
 	}
 	if len(parsed.Choices) == 0 {
-		return "", fmt.Errorf("provider boş yanıt döndürdü")
+		return "", fmt.Errorf("provider returned no choices (HTTP %d)", resp.StatusCode)
 	}
 
-	return strings.TrimSpace(parsed.Choices[0].Message.Content), nil
+	content := strings.TrimSpace(parsed.Choices[0].Message.Content)
+	if content == "" {
+		if parsed.Choices[0].FinishReason == "length" {
+			return "", fmt.Errorf("response got cut off before any content was written (hit max_tokens=%d) — this model may spend tokens on internal reasoning first; try raising default.max_tokens in your config", c.maxTokens)
+		}
+		return "", fmt.Errorf("provider returned an empty message (finish_reason=%q); rerun with --verbose to see the raw response", parsed.Choices[0].FinishReason)
+	}
+	return content, nil
 }

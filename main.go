@@ -10,13 +10,17 @@ import (
 )
 
 func usage() {
-	fmt.Println(`nox — terminal-native AI asistanı
+	fmt.Println(`nox — terminal-native AI assistant
 
-Kullanım:
-  nox "doğal dil isteği"     istekten shell komutu üretir, Enter'da çalıştırır
-  nox "istek" --auto         onaysız çalıştırır (tehlikeli komutlar hariç)
-  nox commit                 staged diff'ten commit mesajı üretir
-  nox commit --auto          onaysız commit eder`)
+Usage:
+  nox "natural language request"   generates a shell command, runs it on Enter
+  nox "request" --auto             runs without confirmation (except dangerous commands)
+  nox commit                       generates a commit message from the staged diff
+  nox commit --auto                commits without confirmation
+
+Flags:
+  --auto                           skip confirmation (except dangerous commands)
+  --verbose                        print the raw request/response sent to the model`)
 }
 
 func main() {
@@ -27,13 +31,17 @@ func main() {
 	}
 
 	auto := false
+	verbose := false
 	rest := args[:0:0]
 	for _, a := range args {
-		if a == "--auto" {
+		switch a {
+		case "--auto":
 			auto = true
-			continue
+		case "--verbose":
+			verbose = true
+		default:
+			rest = append(rest, a)
 		}
-		rest = append(rest, a)
 	}
 
 	if len(rest) == 0 {
@@ -48,12 +56,12 @@ func main() {
 
 	switch rest[0] {
 	case "commit":
-		err = commands.Commit(cfg, auto)
+		err = commands.Commit(cfg, auto, verbose)
 	case "help", "-h", "--help":
 		usage()
 		return
 	default:
-		err = commands.RunNL(cfg, strings.Join(rest, " "), auto)
+		err = commands.RunNL(cfg, strings.Join(rest, " "), auto, verbose)
 	}
 
 	if err != nil {

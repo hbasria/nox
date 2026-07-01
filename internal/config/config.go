@@ -9,6 +9,10 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+// Each [providers.*] entry supports either:
+//   api_key_env = "SOME_ENV_VAR"   (reads the key from that env var, recommended)
+//   api_key     = "sk-..."         (stores the key directly in this file)
+// If both are set, api_key wins.
 const defaultTemplate = `[default]
 provider = "openai"
 model = "gpt-4o-mini"
@@ -36,7 +40,12 @@ type Default struct {
 }
 
 type Provider struct {
-	BaseURL   string `toml:"base_url"`
+	BaseURL string `toml:"base_url"`
+	// APIKey is an optional direct key value, for convenience. Takes
+	// precedence over APIKeyEnv when set.
+	APIKey string `toml:"api_key"`
+	// APIKeyEnv names an environment variable to read the key from.
+	// Preferred over APIKey when the config file may be shared/synced.
 	APIKeyEnv string `toml:"api_key_env"`
 }
 
@@ -45,16 +54,60 @@ type Config struct {
 	Providers map[string]Provider `toml:"providers"`
 }
 
+// Dir returns nox's data directory (~/.nox), honoring NOX_HOME for overrides.
+func Dir() (string, error) {
+	if d := os.Getenv("NOX_HOME"); d != "" {
+		return d, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("could not determine home directory: %w", err)
+	}
+	return filepath.Join(home, ".nox"), nil
+}
+
 // Path returns the global config file path, honoring NOX_CONFIG for overrides.
 func Path() (string, error) {
 	if p := os.Getenv("NOX_CONFIG"); p != "" {
 		return p, nil
 	}
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "config.toml"), nil
+}
+
+// legacyPath is the pre-~/.nox config location (~/.config/nox/config.toml).
+func legacyPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("home dizini bulunamadı: %w", err)
+		return "", err
 	}
 	return filepath.Join(home, ".config", "nox", "config.toml"), nil
+}
+
+// migrateLegacy moves a config found at the old ~/.config/nox location to
+// newPath, if present and newPath doesn't already exist.
+func migrateLegacy(newPath string) error {
+	oldPath, err := legacyPath()
+	if err != nil || oldPath == newPath {
+		return nil
+	}
+	if _, err := os.Stat(oldPath); err != nil {
+		return nil
+	}
+	if _, err := os.Stat(newPath); err == nil {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(newPath), 0o755); err != nil {
+		return fmt.Errorf("could not create config directory: %w", err)
+	}
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return fmt.Errorf("could not migrate legacy config: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "nox: migrated config from %s to %s\n", oldPath, newPath)
+	return nil
 }
 
 // Load reads the global config, creating it with defaults on first run.
@@ -64,28 +117,32 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	if err := migrateLegacy(path); err != nil {
+		return nil, err
+	}
+
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := create(path); err != nil {
 			return nil, err
 		}
-		fmt.Fprintf(os.Stderr, "nox: yeni config oluşturuldu: %s\n", path)
+		fmt.Fprintf(os.Stderr, "nox: created new config at %s\n", path)
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("config okunamadı: %w", err)
+		return nil, fmt.Errorf("could not read config: %w", err)
 	}
 
 	var cfg Config
 	if err := toml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("config parse edilemedi (%s): %w", path, err)
+		return nil, fmt.Errorf("could not parse config (%s): %w", path, err)
 	}
 	return &cfg, nil
 }
 
 func create(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("config dizini oluşturulamadı: %w", err)
+		return fmt.Errorf("could not create config directory: %w", err)
 	}
 	return os.WriteFile(path, []byte(defaultTemplate), 0o600)
 }
@@ -94,13 +151,17 @@ func create(path string) error {
 func (c *Config) ActiveProvider() (Provider, error) {
 	p, ok := c.Providers[c.Default.Provider]
 	if !ok {
-		return Provider{}, fmt.Errorf("provider %q config.toml içinde tanımlı değil", c.Default.Provider)
+		return Provider{}, fmt.Errorf("provider %q is not defined in config.toml", c.Default.Provider)
 	}
 	return p, nil
 }
 
-// APIKey reads the actual key from the environment variable named by APIKeyEnv.
-func (p Provider) APIKey() string {
+// ResolveAPIKey returns the provider's API key: the direct APIKey value if
+// set, otherwise the value of the APIKeyEnv environment variable.
+func (p Provider) ResolveAPIKey() string {
+	if p.APIKey != "" {
+		return p.APIKey
+	}
 	if p.APIKeyEnv == "" {
 		return ""
 	}
