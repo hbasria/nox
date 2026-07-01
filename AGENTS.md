@@ -151,7 +151,7 @@ Default retention **1 day**, user-configurable via `hook.retention`
 - [ ] `nox init-shell` / `nox on` / `nox off` — hook install and toggle
   - [ ] Rotating buffer, default retention **1 day**, configurable
 - [ ] `nox fix` — check last command's exit code, suggest a diagnosis
-- [ ] `nox cleanup` — unnecessary file cleanup (with confirmation)
+- [x] `nox cleanup` — unnecessary file cleanup (with confirmation)
 - [ ] Project-based context awareness (package.json/go.mod detection)
 - [ ] Project context file support (`NOX.md` — similar to ovh/shai's `SHAI.md`)
 

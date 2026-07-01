@@ -105,3 +105,27 @@ Task: the user is missing a command-line tool. Give the single shell command tha
 What nox remembers about this machine:
 ` + memoryCtx
 }
+
+// Cleanup returns the prompt for generating a cleanup command based on the
+// scanned project structure. memoryCtx is the contents of the user's
+// ~/.nox/memory.md file, since even a destructive cleanup command should
+// use tools/flags that actually exist on this machine.
+func Cleanup(structure, memoryCtx string) string {
+	p := system + `
+Task: Analyze the provided project structure and generate a single shell command to clean up unnecessary temporary files, caches, build artifacts, or dependencies (like node_modules, __pycache__, target, .DS_Store, etc.).
+
+Rules:
+- The first line of your output MUST be the single shell command to perform the cleanup (e.g., rm -rf node_modules dist).
+- If no cleanup is needed or safe, the first line must be "echo 'No cleanup needed'".
+- Do NOT use markdown code fences (no ` + "```" + `).
+- Following the command line, you must list the files/directories being deleted and a brief explanation for each, prefixed with a bullet point (e.g. "- node_modules: NodeJS dependencies"). This is plain terminal text, not markdown — do not backslash-escape underscores or other characters (write "node_modules", not "node\_modules").
+- Be conservative and safe. Do NOT delete source files, configuration files (like package.json, go.mod, Cargo.toml), or user data.
+`
+
+	if quirks := platformQuirks(); quirks != "" {
+		p += "\nKnown platform quirks:\n" + quirks
+	}
+
+	return p + "\nWhat nox remembers about this machine:\n" + memoryCtx + "\n\nProject structure:\n" + structure
+}
+

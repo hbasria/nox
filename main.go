@@ -19,6 +19,7 @@ Usage:
   nox commit --auto                commits without confirmation
   nox ask "question"               plain Q&A, never generates or runs a command
   nox explain "command"            explains a command in plain language without running it
+  nox cleanup                      analyzes project structure, suggests cleanup command
 
 Flags:
   --auto                           skip confirmation (except dangerous commands)
@@ -67,6 +68,8 @@ func main() {
 		err = commands.Ask(cfg, strings.Join(rest[1:], " "), verbose)
 	case "explain":
 		err = commands.Explain(cfg, strings.Join(rest[1:], " "), verbose)
+	case "cleanup":
+		err = commands.Cleanup(cfg, auto, verbose)
 	case "help", "-h", "--help":
 		usage()
 		return
