@@ -7,10 +7,21 @@ from your normal shell.
 
 See [AGENTS.md](AGENTS.md) for the full design/roadmap.
 
-## Build
+## Install
 
 ```sh
-just build   # or: go build -o nox .
+curl -fsSL https://raw.githubusercontent.com/hbasria/nox/main/install.sh | sh
+```
+
+This detects your OS/architecture and downloads the matching binary from
+the [latest GitHub release](https://github.com/hbasria/nox/releases/latest)
+into `/usr/local/bin` (override with `NOX_INSTALL_DIR`).
+
+## Build from source
+
+```sh
+just build     # builds ./nox for your current OS/architecture
+just release   # cross-compiles darwin/linux × amd64/arm64 into dist/
 ```
 
 ## First run
